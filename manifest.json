@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "French Press Funding Revealer",
+  "version": "1.0",
+  "description": "Appends public funding amounts (2024) to French newspaper names.",
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
