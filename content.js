@@ -37,6 +37,22 @@ const FUNDING_DATA = {
   "CNews": "0€"
 };
 
+// Redundant source URLs and lists removed as links are being removed
+
+
+// Inject subtle styling for the added links
+const style = document.createElement('style');
+style.textContent = `
+  .papers-owners-suffix {
+    opacity: 0.7;
+    font-size: 0.9em;
+    white-space: nowrap;
+    display: inline;
+  }
+
+`;
+document.head.appendChild(style);
+
 let currentStyle = 'concise';
 let initialized = false;
 
@@ -96,53 +112,75 @@ function getFormattedSuffix(amount) {
       return ` (${amount} public '23)`;
   }
 }
-
-// Prepare keys: include original and ALL CAPS versions
 const baseKeys = Object.keys(FUNDING_DATA);
-const allKeys = [];
-baseKeys.forEach(key => {
-  allKeys.push(key);
-  const upper = key.toUpperCase();
-  if (upper !== key) {
-    allKeys.push(upper);
-  }
-});
-
 // Sort by length descending for better matching
-allKeys.sort((a, b) => b.length - a.length);
+baseKeys.sort((a, b) => b.length - a.length);
 
-const pattern = new RegExp(`\\b(${allKeys.map(escapeRegExp).join('|')})\\b`, 'g');
+const pattern = new RegExp(`\\b(${baseKeys.map(escapeRegExp).join('|')})\\b`, 'gi');
 
 function processNode(node) {
   if (node.nodeType === 3) { // Text node
     const text = node.nodeValue;
     if (pattern.test(text)) {
-      const newText = text.replace(pattern, (match) => {
-        // Find amount (standardize match to find in FUNDING_DATA if it was upper case)
-        const amount = FUNDING_DATA[match] || FUNDING_DATA[Object.keys(FUNDING_DATA).find(k => k.toUpperCase() === match)];
+      // Crude check to avoid re-processing nodes that already look like they have the data
+      if (/[\(\[]?(💰 )?\d+(,\d+)?(M€|Md€).+[\)\]]?/.test(text)) return;
 
-        if (!amount) return match;
+      const fragment = document.createDocumentFragment();
+      let lastIndex = 0;
+      let match;
+      pattern.lastIndex = 0; // Reset regex state improvements
 
+      let changed = false;
+      while ((match = pattern.exec(text)) !== null) {
+        const fullMatch = match[0];
+        const matchUpper = fullMatch.toUpperCase();
+        const amount = FUNDING_DATA[fullMatch] || FUNDING_DATA[Object.keys(FUNDING_DATA).find(k => k.toUpperCase() === matchUpper)];
+
+        if (!amount) continue;
+
+        // Check lookahead for existing info
+        const lookahead = text.substring(match.index + fullMatch.length, match.index + fullMatch.length + 40);
+        if (/[\(\[]?(💰 )?\d+(,\d+)?(M€|Md€)/.test(lookahead)) continue;
+
+        changed = true;
+
+        // Add text before the match
+        fragment.appendChild(document.createTextNode(text.substring(lastIndex, match.index)));
+
+        // Create a wrapper for the match to prevent re-processing
+        const wrapper = document.createElement('span');
+        wrapper.className = 'papers-owners-added';
+        wrapper.style.display = 'inline';
+        wrapper.textContent = fullMatch;
+
+        // Create the suffix as a plain span (links removed as per request)
         const suffix = getFormattedSuffix(amount);
+        const suffixSpan = document.createElement('span');
+        suffixSpan.className = 'papers-owners-suffix';
+        suffixSpan.textContent = suffix;
+        wrapper.appendChild(suffixSpan);
 
-        // Prevent double appending
-        // Check if any known suffix format is already there (M€ or Md€ followed by public or closing bracket/paren)
-        const alreadyHasSuffix = /[\(\[]?(💰 )?\d+(,\d+)?(M€|Md€).+[\)\]]?/.test(text);
 
-        if (alreadyHasSuffix) return match;
+        fragment.appendChild(wrapper);
 
-        return `${match}${suffix}`;
-      });
+        lastIndex = pattern.lastIndex;
+      }
 
-      if (newText !== text) {
-        node.nodeValue = newText;
+      if (changed) {
+        fragment.appendChild(document.createTextNode(text.substring(lastIndex)));
+        node.parentNode.replaceChild(fragment, node);
       }
     }
   } else if (node.nodeType === 1) { // Element node
-    if (['SCRIPT', 'STYLE', 'TEXTAREA', 'INPUT', 'NOSCRIPT'].includes(node.tagName)) {
+    // Skip scripts, styles, and our own added elements
+    if (['SCRIPT', 'STYLE', 'TEXTAREA', 'INPUT', 'NOSCRIPT'].includes(node.tagName) ||
+      node.classList.contains('papers-owners-added') ||
+      node.classList.contains('papers-owners-suffix')) {
       return;
     }
-    node.childNodes.forEach(processNode);
+
+    // Process children. Convert to array to avoid issues with live NodeList during replaceChild
+    Array.from(node.childNodes).forEach(processNode);
   }
 }
 
