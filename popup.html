@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --bg: #ffffff;
+            --text: #1f2937;
+            --border: #e5e7eb;
+        }
+
+        body {
+            width: 280px;
+            margin: 0;
+            padding: 16px;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            color: var(--text);
+            background: var(--bg);
+        }
+
+        h1 {
+            font-size: 1.1rem;
+            margin-top: 0;
+            margin-bottom: 1rem;
+            color: var(--primary);
+            font-weight: 700;
+        }
+
+        .option {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            margin-bottom: 8px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .option:hover {
+            background: #f8fafc;
+            border-color: var(--primary);
+        }
+
+        .option.selected {
+            background: #eff6ff;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 1px var(--primary);
+        }
+
+        .option input {
+            margin-right: 12px;
+            accent-color: var(--primary);
+        }
+
+        .label-text {
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .preview {
+            display: block;
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-top: 2px;
+        }
+
+        footer {
+            margin-top: 16px;
+            font-size: 0.7rem;
+            color: #94a3b8;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Display Style</h1>
+
+    <div class="option" data-value="concise">
+        <input type="radio" name="style" value="concise" id="style-concise">
+        <div>
+            <label for="style-concise" class="label-text">Concise</label>
+            <span class="preview">Le Monde (8,3M€ public '23)</span>
+        </div>
+    </div>
+
+    <div class="option" data-value="brackets">
+        <input type="radio" name="style" value="brackets" id="style-brackets">
+        <div>
+            <label for="style-brackets" class="label-text">Brackets</label>
+            <span class="preview">Le Monde [8,3M€ public]</span>
+        </div>
+    </div>
+
+    <div class="option" data-value="visual">
+        <input type="radio" name="style" value="visual" id="style-visual">
+        <div>
+            <label for="style-visual" class="label-text">Visual</label>
+            <span class="preview">Le Monde (💰 8,3M€)</span>
+        </div>
+    </div>
+
+    <div class="option" data-value="minimalist">
+        <input type="radio" name="style" value="minimalist" id="style-minimalist">
+        <div>
+            <label for="style-minimalist" class="label-text">Minimalist</label>
+            <span class="preview">Le Monde (8,3M€)</span>
+        </div>
+    </div>
+
+    <div class="option" data-value="full">
+        <input type="radio" name="style" value="full" id="style-full">
+        <div>
+            <label for="style-full" class="label-text">Full (Legacy)</label>
+            <span class="preview">Le Monde (8,3 millions € public en 2024)</span>
+        </div>
+    </div>
+
+    <footer>Settings update automatically</footer>
+
+    <script src="popup.js"></script>
+</body>
+
+</html>
