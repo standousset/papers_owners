@@ -54,19 +54,55 @@ style.textContent = `
 document.head.appendChild(style);
 
 let currentStyle = 'concise';
+let matchDuEnabled = false;
+let matchUppercaseEnabled = false;
 let initialized = false;
 
 // Function to initialize logic once style is known
 function init() {
   if (initialized) return;
   initialized = true;
-  processNode(document.body);
+
+  const baseKeys = Object.keys(FUNDING_DATA);
+  const searchTerms = new Set();
+
+  baseKeys.forEach(originalName => {
+    // 1. Original format
+    searchTerms.add(originalName);
+
+    // 2. Uppercase matching if enabled
+    if (matchUppercaseEnabled) {
+      searchTerms.add(originalName.toUpperCase());
+    }
+
+    // 3. "du/au" replacement if enabled
+    if (matchDuEnabled && originalName.startsWith('Le ')) {
+      const variants = [
+        originalName.replace(/^Le /, 'du '),
+        originalName.replace(/^Le /, 'Du '),
+        originalName.replace(/^Le /, 'au '),
+        originalName.replace(/^Le /, 'Au ')
+      ];
+
+      variants.forEach(variant => {
+        searchTerms.add(variant);
+        if (matchUppercaseEnabled) {
+          searchTerms.add(variant.toUpperCase());
+        }
+      });
+    }
+  });
+
+  const sortedTerms = Array.from(searchTerms).sort((a, b) => b.length - a.length);
+  const pattern = new RegExp(`\\b(${sortedTerms.map(escapeRegExp).join('|')})\\b`, 'g');
+
+  processNode(document.body, pattern);
 
   // Observe for mutations
   const observer = new MutationObserver((mutations) => {
     mutations.forEach((mutation) => {
       mutation.addedNodes.forEach((node) => {
-        processNode(node);
+        processNode(node, pattern);
       });
     });
   });
@@ -78,17 +114,19 @@ function init() {
 }
 
 // Load preference and then init
-chrome.storage.sync.get(['displayStyle'], (result) => {
+chrome.storage.sync.get(['displayStyle', 'matchDu', 'matchUppercase'], (result) => {
   if (result.displayStyle) {
     currentStyle = result.displayStyle;
   }
+  matchDuEnabled = !!result.matchDu;
+  matchUppercaseEnabled = !!result.matchUppercase;
   init();
 });
 
 // Listen for updates
 chrome.storage.onChanged.addListener((changes) => {
-  if (changes.displayStyle) {
-    // If user changes style, we reload to start fresh and avoid complex string diffing
+  if (changes.displayStyle || changes.matchDu || changes.matchUppercase) {
+    // If user changes style or detection mode, we reload to start fresh
     location.reload();
   }
 });
@@ -112,13 +150,8 @@ function getFormattedSuffix(amount) {
       return ` (${amount} public '23)`;
   }
 }
-const baseKeys = Object.keys(FUNDING_DATA);
-// Sort by length descending for better matching
-baseKeys.sort((a, b) => b.length - a.length);
 
-const pattern = new RegExp(`\\b(${baseKeys.map(escapeRegExp).join('|')})\\b`, 'gi');
-
-function processNode(node) {
+function processNode(node, pattern) {
   if (node.nodeType === 3) { // Text node
     const text = node.nodeValue;
     if (pattern.test(text)) {
@@ -133,8 +166,20 @@ function processNode(node) {
       let changed = false;
       while ((match = pattern.exec(text)) !== null) {
         const fullMatch = match[0];
-        const matchUpper = fullMatch.toUpperCase();
-        const amount = FUNDING_DATA[fullMatch] || FUNDING_DATA[Object.keys(FUNDING_DATA).find(k => k.toUpperCase() === matchUpper)];
+        // For matching with FUNDING_DATA, we need the original key.
+        // We'll search for the key that matches fullMatch (case-insensitive or with "du" transform)
+        let amount = FUNDING_DATA[fullMatch];
+
+        if (!amount) {
+          // If not direct match, find the original key
+          const matchUpper = fullMatch.toUpperCase();
+          const matchNoPrefix = fullMatch.replace(/^(du|Du|au|Au|DU|AU) /i, 'Le ');
+          const matchNoPrefixUpper = matchNoPrefix.toUpperCase();
+
+          amount = FUNDING_DATA[matchNoPrefix] ||
+            FUNDING_DATA[Object.keys(FUNDING_DATA).find(k => k.toUpperCase() === matchUpper)] ||
+            FUNDING_DATA[Object.keys(FUNDING_DATA).find(k => k.toUpperCase() === matchNoPrefixUpper)];
+        }
 
         if (!amount) continue;
 
@@ -180,7 +225,7 @@ function processNode(node) {
     }
 
     // Process children. Convert to array to avoid issues with live NodeList during replaceChild
-    Array.from(node.childNodes).forEach(processNode);
+    Array.from(node.childNodes).forEach(child => processNode(child, pattern));
   }
 }
 

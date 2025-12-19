@@ -67,6 +67,26 @@
             margin-top: 2px;
         }
 
+        .setting-toggle {
+            display: flex;
+            align-items: center;
+            padding: 8px 10px;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: background 0.2s;
+        }
+
+        .setting-toggle:hover {
+            background: #f8fafc;
+        }
+
+        .setting-toggle input {
+            margin-right: 12px;
+            accent-color: var(--primary);
+            width: 16px;
+            height: 16px;
+        }
+
         footer {
             margin-top: 16px;
             font-size: 0.7rem;
@@ -117,6 +137,18 @@
             <label for="style-full" class="label-text">Full (Legacy)</label>
             <span class="preview">Le Monde (8,3 millions € public en 2024)</span>
         </div>
+    </div>
+
+    <hr style="margin: 16px 0; border: 0; border-top: 1px solid var(--border);">
+
+    <div class="setting-toggle">
+        <input type="checkbox" id="match-du" name="matchDu">
+        <label for="match-du" class="label-text">Match "du/au" (e.g. du Monde, au Monde)</label>
+    </div>
+
+    <div class="setting-toggle">
+        <input type="checkbox" id="match-uppercase" name="matchUppercase">
+        <label for="match-uppercase" class="label-text">Match Uppercase (e.g. LE MONDE)</label>
     </div>
 
     <footer>Settings update automatically</footer>
