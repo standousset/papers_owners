@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const options = document.querySelectorAll('.option');
 
     // Load current setting
-    chrome.storage.sync.get(['displayStyle', 'matchDu', 'matchUppercase'], (result) => {
+    chrome.storage.sync.get(['displayStyle', 'matchDu', 'matchUppercase', 'showPerMonth', 'showPerPerson'], (result) => {
         const style = result.displayStyle || 'concise';
         const activeInput = document.querySelector(`input[value="${style}"]`);
         if (activeInput) {
@@ -12,6 +12,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.getElementById('match-du').checked = !!result.matchDu;
         document.getElementById('match-uppercase').checked = !!result.matchUppercase;
+        document.getElementById('show-per-month').checked = !!result.showPerMonth;
+        document.getElementById('show-per-person').checked = !!result.showPerPerson;
     });
 
     // Save on change
@@ -46,5 +48,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('match-uppercase').addEventListener('change', (e) => {
         chrome.storage.sync.set({ matchUppercase: e.target.checked });
+    });
+
+    document.getElementById('show-per-month').addEventListener('change', (e) => {
+        chrome.storage.sync.set({ showPerMonth: e.target.checked });
+    });
+
+    document.getElementById('show-per-person').addEventListener('change', (e) => {
+        chrome.storage.sync.set({ showPerPerson: e.target.checked });
     });
 });

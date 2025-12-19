@@ -24,9 +24,9 @@ const FUNDING_DATA = {
   "Charlie Hebdo": "0€",
 
   // TV & Radio (Dotations publiques annuelles pour le service public)
-  "France Télévisions": "2,5Md€",
-  "France 2": "2,5Md€", // Group amount
-  "France 3": "2,5Md€", // Group amount
+  "France Télévisions": "2500Md€",
+  "France 2": "2500Md€", // Group amount
+  "France 3": "2500Md€", // Group amount
   "Arte": "300M€",
   "Radio France": "630M€",
   "France Inter": "630M€", // Group amount
@@ -56,7 +56,11 @@ document.head.appendChild(style);
 let currentStyle = 'concise';
 let matchDuEnabled = false;
 let matchUppercaseEnabled = false;
+let showPerMonthEnabled = false;
+let showPerPersonEnabled = false;
 let initialized = false;
+
+const POPULATION_FRANCE = 68400000; // ~2024 population
 
 // Function to initialize logic once style is known
 function init() {
@@ -114,18 +118,20 @@ function init() {
 }
 
 // Load preference and then init
-chrome.storage.sync.get(['displayStyle', 'matchDu', 'matchUppercase'], (result) => {
+chrome.storage.sync.get(['displayStyle', 'matchDu', 'matchUppercase', 'showPerMonth', 'showPerPerson'], (result) => {
   if (result.displayStyle) {
     currentStyle = result.displayStyle;
   }
   matchDuEnabled = !!result.matchDu;
   matchUppercaseEnabled = !!result.matchUppercase;
+  showPerMonthEnabled = !!result.showPerMonth;
+  showPerPersonEnabled = !!result.showPerPerson;
   init();
 });
 
 // Listen for updates
 chrome.storage.onChanged.addListener((changes) => {
-  if (changes.displayStyle || changes.matchDu || changes.matchUppercase) {
+  if (changes.displayStyle || changes.matchDu || changes.matchUppercase || changes.showPerMonth || changes.showPerPerson) {
     // If user changes style or detection mode, we reload to start fresh
     location.reload();
   }
@@ -135,19 +141,66 @@ function escapeRegExp(string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-function getFormattedSuffix(amount) {
+function parseAmount(amountStr) {
+  if (amountStr === "0€") return 0;
+
+  const match = amountStr.match(/^(\d+(,\d+)?)(M€|Md€)$/);
+  if (!match) return 0;
+
+  let val = parseFloat(match[1].replace(',', '.'));
+  if (match[3] === 'M€') {
+    return val * 1000000;
+  } else if (match[3] === 'Md€') {
+    return val * 1000000000;
+  }
+  return 0;
+}
+
+function formatValue(value) {
+  if (value === 0) return "0€";
+
+  if (showPerPersonEnabled) {
+    // Format as e.g. "0.12€"
+    return value.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "€";
+  }
+
+  if (value >= 1000000000) {
+    return (value / 1000000000).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + "Md€";
+  }
+  if (value >= 1000000) {
+    return (value / 1000000).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + "M€";
+  }
+  return value.toLocaleString('fr-FR', { maximumFractionDigits: 0 }) + "€";
+}
+
+function getFormattedSuffix(rawAmountStr) {
+  let value = parseAmount(rawAmountStr);
+
+  if (showPerPersonEnabled) {
+    value = value / POPULATION_FRANCE;
+  }
+
+  if (showPerMonthEnabled) {
+    value = value / 12;
+  }
+
+  const amount = formatValue(value);
+  const period = showPerMonthEnabled ? "/mois" : "";
+  const perPerson = showPerPersonEnabled ? "/hab" : "";
+  const suffix = period + perPerson;
+
   switch (currentStyle) {
     case 'brackets':
-      return ` [${amount} public]`;
+      return ` [${amount}${suffix} public]`;
     case 'visual':
-      return ` (💰 ${amount})`;
+      return ` (💰 ${amount}${suffix})`;
     case 'minimalist':
-      return ` (${amount})`;
+      return ` (${amount}${suffix})`;
     case 'full':
-      return ` (${amount} d’argent public en 2024)`;
+      return ` (${amount}${suffix} d’argent public en 2024)`;
     case 'concise':
     default:
-      return ` (${amount} public '23)`;
+      return ` (${amount}${suffix} public '23)`;
   }
 }
 
